@@ -3,20 +3,52 @@ import fs from 'fs';
 import path from 'path';
 
 const gd = new GD();
-const difficulties = ["Auto", "Easy", "Normal", "Hard", "Harder", "Insane", "Easy Demon", "Medium Demon", "Hard Demon", "Insane Demon", "Extreme Demon"];
-// const difficulties = ["Easy Demon", "Medium Demon", "Hard Demon", "Insane Demon", "Extreme Demon", "Insane"];
-// const difficulties = ["Hard", "Harder"];
-const lvllengths = ["Tiny", "Short", "Medium", "Long", "XL"];
-const awards = [2, 3];
 
-const saveLevelData = async (level) => {
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const randDelay = (minSec, maxSec) =>
+    sleep((Math.random() * (maxSec - minSec) + minSec) * 1000);
+
+const lookupUser = async (accountID, retries = 4) => {
+    for (let attempt = 0; attempt < retries; attempt++) {
+        const user = await gd.users.getByAccountID(accountID);
+        if (user) return user;
+        const backoff = Math.pow(2, attempt) * 30;
+        console.warn(`  Lookup returned null, backing off ${backoff}s (attempt ${attempt + 1}/${retries})`);
+        await sleep(backoff * 1000);
+    }
+    return null;
+};
+// const difficulties = ["Auto", "Easy", "Normal", "Hard", "Harder", "Insane", "Easy Demon", "Medium Demon", "Hard Demon", "Insane Demon", "Extreme Demon"];
+// const difficulties = ["Easy Demon", "Medium Demon", "Hard Demon", "Insane Demon", "Extreme Demon", "Insane"];
+const difficulties = ["Easy", "Normal", "Hard", "Harder"];
+// const lvllengths = ["Tiny", "Short", "Medium", "Long", "XL"];
+
+const loadExistingIDs = () => {
+    const ids = new Set();
+    if (!fs.existsSync('levels')) return ids;
+    for (const starDir of fs.readdirSync('levels')) {
+        const metaPath = path.join('levels', starDir, 'metadata');
+        if (!fs.existsSync(metaPath)) continue;
+        for (const file of fs.readdirSync(metaPath)) {
+            if (file.endsWith('.json')) ids.add(parseInt(file));
+        }
+    }
+    return ids;
+};
+
+const saveLevelData = async (level, existingIDs) => {
+    if (existingIDs.has(level.id)) {
+        console.log(`Skipping level ${level.id} (already exists)`);
+        return false;
+    }
     try {
         const fullLevel = await level.resolve();
         const stars = fullLevel.difficulty.stars || 0;
 
         const creator = fullLevel.creator.accountID
-            ? await gd.users.getByAccountID(fullLevel.creator.accountID)
+            ? await lookupUser(fullLevel.creator.accountID)
             : null;
+        if (fullLevel.creator.accountID && !creator) throw new Error('user lookup failed after retries');
         const levelData = {
             id: fullLevel.id,
             name: fullLevel.name,
@@ -40,28 +72,42 @@ const saveLevelData = async (level) => {
 
         fs.writeFileSync(path.join(metaPath, `${fullLevel.id}.json`), JSON.stringify(levelData, null, 4));
 
+        existingIDs.add(fullLevel.id);
         console.log(`Processed level ${fullLevel.id}`);
         return true;
     } catch (e) {
         console.error(`Failed level ${level.id}: ${e.message}`);
+        await randDelay(60, 120);
         return false;
     }
 };
 
 const runScanner = async () => {
+    const existingIDs = loadExistingIDs();
+    console.log(`Found ${existingIDs.size} already-processed levels`);
+    let requestCount = 0;
     for (const diff of difficulties) {
         console.log(`--- Scanning Difficulty: ${diff} ---`);
         let queryNum = 5000;
         if (diff.includes("Demon")) { queryNum = 1000; }
-        const levels = await gd.levels.search({ difficulty: diff, award: 3 }, queryNum);
+        const levels = await gd.levels.search({ difficulty: diff }, queryNum);
+        console.log(`  Got ${levels.length} levels`);
         for (const lvl of levels) {
-            await saveLevelData(lvl);
-            // Random delay 3-7s to mimic human behavior
-            await new Promise(r => setTimeout(r, Math.floor(Math.random() * 4000) + 3000));
+            const processed = await saveLevelData(lvl, existingIDs);
+            if (processed) {
+                requestCount++;
+                if (requestCount % 20 === 0) {
+                    console.log('  Taking a longer break...');
+                    await randDelay(45, 90);
+                } else if (Math.random() < 0.1) {
+                    await randDelay(30, 60);
+                } else {
+                    await randDelay(8, 20);
+                }
+            }
         }
-        await new Promise(r => setTimeout(r, 30000)); // Cool down
+        await randDelay(45, 90); // Cool down between difficulties
     }
-
 };
 
 runScanner().catch(console.error);
