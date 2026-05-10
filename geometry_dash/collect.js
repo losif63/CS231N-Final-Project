@@ -20,7 +20,7 @@ const lookupUser = async (accountID, retries = 4) => {
 };
 // const difficulties = ["Auto", "Easy", "Normal", "Hard", "Harder", "Insane", "Easy Demon", "Medium Demon", "Hard Demon", "Insane Demon", "Extreme Demon"];
 // const difficulties = ["Easy Demon", "Medium Demon", "Hard Demon", "Insane Demon", "Extreme Demon", "Insane"];
-const difficulties = ["Easy", "Normal", "Hard", "Harder"];
+const difficulties = ["Normal", "Hard", "Harder"];
 // const lvllengths = ["Tiny", "Short", "Medium", "Long", "XL"];
 
 const loadExistingIDs = () => {
