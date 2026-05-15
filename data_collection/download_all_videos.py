@@ -74,6 +74,11 @@ def download_for_level(
         "sleep_interval": download_delay,
         "playlist_items": ",".join(str(k) for k in missing),
         "ignoreerrors": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["default", "web", "mweb", "tv"],
+            }
+        },
     }
     if cookies_file is not None:
         options["cookiefile"] = str(cookies_file)
@@ -101,7 +106,7 @@ def main() -> None:
     )
     parser.add_argument("--levels-dir", type=Path, default=DEFAULT_LEVELS_DIR)
     parser.add_argument("--videos-dir", type=Path, default=DEFAULT_VIDEOS_DIR)
-    parser.add_argument("--num-results", type=int, default=1)
+    parser.add_argument("--num-results", type=int, default=5)
     parser.add_argument("--download-delay", type=int, default=2)
     parser.add_argument("--cookies-file", type=Path, default=DEFAULT_COOKIES_FILE)
     parser.add_argument(
