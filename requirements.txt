@@ -1,0 +1,24 @@
+# Known-working combination for PyTorchVideo + decord + torch on linux/x86_64.
+# Install on the GPU box with:
+#     conda create -n cs231n python=3.10
+#     conda activate cs231n
+#     pip install -r requirements.txt
+#
+# Notes:
+# - PyTorchVideo 0.1.5 is the last release and pins to old torch in its
+#   metadata; pip will warn but the runtime works against torch 2.1.x.
+# - numpy must stay <2.0 because fvcore (a PyTorchVideo dep) imports
+#   numpy.float / numpy.int aliases removed in 2.0.
+
+torch==2.1.2
+torchvision==0.16.2
+pytorchvideo==0.1.5
+
+decord==0.6.0
+numpy<2.0
+
+pyyaml>=6.0
+tensorboard>=2.15
+matplotlib>=3.7
+scikit-learn>=1.3
+tqdm>=4.66
