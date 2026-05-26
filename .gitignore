@@ -3,3 +3,9 @@ node_modules/**
 videos/**
 package.json
 package-lock.json
+splits.json
+verify_out/
+__pycache__/
+*.pyc
+checkpoints/
+runs/
