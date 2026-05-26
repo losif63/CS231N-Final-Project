@@ -1,9 +1,9 @@
-"""X3D-M backbone wrapper (PyTorchVideo, Kinetics-400 pretrained).
+"""I3D-R50 backbone wrapper (PyTorchVideo, Kinetics-400 pretrained).
 
-Input: `(B, C=3, T, H, W)` raw clip in [0, 1] from the dataset (T defaults to
-32, H=224, W=398). Internally subsamples to 16 frames, resizes spatially to
-224x224, normalizes with X3D's Kinetics-400 stats, then runs the spatiotemporal
-CNN with the classifier head stripped. Returns `(B, feature_dim)` per clip.
+Input: `(B, C=3, T, H, W)` raw clip in [0, 1] from the dataset. Uses the raw
+32-frame clip directly (NATIVE_T = 32), resizes spatially to 224x224,
+normalizes with I3D's Kinetics-400 stats, then runs the net with the
+classifier head stripped. Returns `(B, feature_dim)` per clip.
 """
 
 from __future__ import annotations
@@ -16,27 +16,24 @@ import torch.nn as nn
 from ._video_ops import resize_spatial, subsample_temporal
 
 
-class X3DBackbone(nn.Module):
-    NATIVE_T: int = 16
+class I3DBackbone(nn.Module):
+    NATIVE_T: int = 32
     NATIVE_HW: int = 224
     MEAN: Tuple[float, float, float] = (0.45, 0.45, 0.45)
     STD: Tuple[float, float, float] = (0.225, 0.225, 0.225)
 
     def __init__(self, pretrained: bool = True) -> None:
         super().__init__()
-        # Pulls weights from torch.hub on first call; cached afterward.
         self.net = torch.hub.load(
             "facebookresearch/pytorchvideo",
-            "x3d_m",
+            "i3d_r50",
             pretrained=pretrained,
         )
 
-        # Strip the classifier head: keep pre/post conv-norm-act + pooling,
-        # drop the per-class Linear and Softmax.
         head = self.net.blocks[-1]
         if not (hasattr(head, "proj") and isinstance(head.proj, nn.Linear)):
             raise RuntimeError(
-                f"Unexpected X3D head structure (proj={type(getattr(head, 'proj', None))}); "
+                f"Unexpected I3D head structure (proj={type(getattr(head, 'proj', None))}); "
                 "cannot strip classifier."
             )
         head.proj = nn.Identity()
@@ -50,7 +47,6 @@ class X3DBackbone(nn.Module):
             "_std", torch.tensor(self.STD).view(1, 3, 1, 1, 1), persistent=False
         )
 
-        # Dummy forward to recover feature_dim post head-strip.
         was_training = self.training
         self.eval()
         with torch.no_grad():
@@ -59,7 +55,7 @@ class X3DBackbone(nn.Module):
         if was_training:
             self.train()
         if out.ndim != 2:
-            raise RuntimeError(f"X3D stripped head returned ndim={out.ndim}, expected 2.")
+            raise RuntimeError(f"I3D stripped head returned ndim={out.ndim}, expected 2.")
         self.feature_dim: int = out.size(1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
