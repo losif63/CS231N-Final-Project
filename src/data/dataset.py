@@ -26,6 +26,7 @@ from typing import List, Optional, Tuple
 import decord
 import numpy as np
 import torch
+from decord._ffi.base import DECORDError
 from torch.utils.data import Dataset
 
 from .transforms import RawClipTransform
@@ -118,6 +119,10 @@ class GeometryDashDataset(Dataset):
             color_jitter=color_jitter if mode == "train" else 0.0,
         )
 
+        # Per-instance (per-worker, in DataLoader) cache of indices we've
+        # found to be unreadable; we skip them on retry.
+        self._broken: set[int] = set()
+
     @property
     def K(self) -> int:
         return (
@@ -130,6 +135,35 @@ class GeometryDashDataset(Dataset):
         return len(self.records)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+        """Load `idx`, skipping forward through broken videos on decode errors.
+
+        A single corrupt file would otherwise kill the DataLoader. We mark
+        failing indices in `self._broken` so the same worker won't retry them.
+        """
+        n = len(self.records)
+        cur = idx
+        tried = 0
+        while tried < n:
+            if cur in self._broken:
+                cur = (cur + 1) % n
+                tried += 1
+                continue
+            try:
+                return self._load(cur)
+            except (DECORDError, OSError, RuntimeError) as e:
+                warnings.warn(
+                    f"Skipping unreadable video at idx={cur} "
+                    f"({self.records[cur].path}): {type(e).__name__}: {e}",
+                    stacklevel=2,
+                )
+                self._broken.add(cur)
+                cur = (cur + 1) % n
+                tried += 1
+        raise RuntimeError(
+            f"All {n} videos failed to load (broken indices: {sorted(self._broken)[:10]}...)"
+        )
+
+    def _load(self, idx: int) -> Tuple[torch.Tensor, int]:
         rec = self.records[idx]
         vr = decord.VideoReader(rec.path, num_threads=1)
         src_fps = float(vr.get_avg_fps()) or float(self.target_fps)
