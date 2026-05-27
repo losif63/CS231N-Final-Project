@@ -28,7 +28,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
-import torch.nn.functional as F  # noqa: E402
 from sklearn.metrics import (  # noqa: E402
     confusion_matrix,
     precision_recall_fscore_support,
@@ -42,8 +41,14 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from src.data.dataset import GeometryDashDataset  # noqa: E402
 from src.data.splits import make_or_load_splits  # noqa: E402
-from src.models.difficulty_model import DifficultyModel  # noqa: E402
+from src.models.difficulty_model import (  # noqa: E402
+    DifficultyModel,
+    decode_logits,
+)
 from src.models.factory import BACKBONES, build_backbone  # noqa: E402
+
+_NUM_CLASSES = 10
+_HEAD_KINDS = ("softmax", "ordinal")
 
 
 def worker_init_fn(worker_id: int) -> None:
@@ -54,11 +59,14 @@ def worker_init_fn(worker_id: int) -> None:
 
 @torch.no_grad()
 def run_inference(
-    model, dl, device, use_amp
+    model, dl, device, use_amp, head_kind: str
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Returns (preds, trues, expected_values), all length-N arrays, labels 0..9."""
+    """Returns (preds, trues, expected_values), all length-N arrays.
+
+    `pred` is 0..K-1; `ev` is on the stars scale 1..K. The split between
+    softmax and ordinal CORN heads is handled inside `decode_logits`.
+    """
     model.eval()
-    ranks = torch.arange(1, 11, device=device, dtype=torch.float32)
     all_pred: List[int] = []
     all_true: List[int] = []
     all_ev: List[float] = []
@@ -66,9 +74,7 @@ def run_inference(
         clips = clips.to(device, non_blocking=True)
         with torch.cuda.amp.autocast(enabled=use_amp):
             logits = model(clips)
-        probs = F.softmax(logits.float(), dim=-1)
-        ev = (probs * ranks).sum(dim=-1)
-        pred = logits.argmax(dim=-1)
+        pred, ev = decode_logits(logits, head_kind)
         all_pred.extend(pred.cpu().tolist())
         all_true.extend(labels.tolist())
         all_ev.extend(ev.cpu().tolist())
@@ -160,6 +166,8 @@ def main() -> None:
                     help="Override backbone (default: read from ckpt args).")
     ap.add_argument("--aggregation", default=None,
                     help="Override aggregation (default: read from ckpt args).")
+    ap.add_argument("--head-kind", default=None, choices=list(_HEAD_KINDS),
+                    help="Override head kind (default: read from ckpt args).")
     ap.add_argument("--no-amp", action="store_true")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
@@ -182,8 +190,14 @@ def main() -> None:
             f"(got {backbone_name!r}; options: {sorted(BACKBONES)})"
         )
     aggregation = args.aggregation or saved_args.get("aggregation", "max")
+    head_kind = args.head_kind or saved_args.get("head_kind", "softmax")
+    if head_kind not in _HEAD_KINDS:
+        raise ValueError(
+            f"Unknown head_kind {head_kind!r}; expected one of {list(_HEAD_KINDS)}."
+        )
     print(f"Checkpoint: {ckpt_path}")
     print(f"  backbone={backbone_name}  aggregation={aggregation}  "
+          f"head_kind={head_kind}  "
           f"epoch={ckpt.get('epoch', '?')}  "
           f"best_val_mae={ckpt.get('best_val_mae', float('nan')):.4f}")
 
@@ -210,10 +224,15 @@ def main() -> None:
 
     print(f"Building {backbone_name}...")
     backbone = build_backbone(backbone_name, pretrained=False)
-    model = DifficultyModel(backbone, aggregation=aggregation).to(device)
+    model = DifficultyModel(
+        backbone,
+        aggregation=aggregation,
+        head_kind=head_kind,
+        num_classes=_NUM_CLASSES,
+    ).to(device)
     model.load_state_dict(ckpt["model"])
 
-    preds, trues, evs = run_inference(model, dl, device, use_amp)
+    preds, trues, evs = run_inference(model, dl, device, use_amp, head_kind)
     n = len(trues)
 
     acc = float(np.mean(preds == trues))
@@ -267,6 +286,7 @@ def main() -> None:
         "split": args.split,
         "backbone": backbone_name,
         "aggregation": aggregation,
+        "head_kind": head_kind,
         "n": int(n),
         "acc": acc,
         "mae_argmax": mae_argmax,

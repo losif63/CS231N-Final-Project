@@ -1,9 +1,9 @@
 levels/**
 node_modules/**
 videos/**
+videos_processed/**
 package.json
 package-lock.json
-splits.json
 verify_out/
 __pycache__/
 *.pyc

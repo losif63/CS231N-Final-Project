@@ -30,7 +30,6 @@ from typing import Dict, List
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
@@ -41,8 +40,14 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from src.data.dataset import GeometryDashDataset  # noqa: E402
 from src.data.splits import make_or_load_splits  # noqa: E402
-from src.models.difficulty_model import DifficultyModel  # noqa: E402
+from src.models.difficulty_model import (  # noqa: E402
+    DifficultyModel,
+    compute_loss,
+    decode_logits,
+)
 from src.models.factory import BACKBONES, build_backbone  # noqa: E402
+
+_NUM_CLASSES = 10
 
 
 def worker_init_fn(worker_id: int) -> None:
@@ -65,9 +70,8 @@ def cosine_warmup_lambda(total_steps: int, warmup_frac: float):
 
 
 @torch.no_grad()
-def evaluate(model, dl, device, use_amp) -> Dict[str, float]:
+def evaluate(model, dl, device, use_amp, head_kind: str) -> Dict[str, float]:
     model.eval()
-    ranks = torch.arange(1, 11, device=device, dtype=torch.float32)
     preds: List[int] = []
     trues: List[int] = []
     evs: List[float] = []
@@ -78,10 +82,8 @@ def evaluate(model, dl, device, use_amp) -> Dict[str, float]:
         labels = labels.to(device, non_blocking=True)
         with torch.cuda.amp.autocast(enabled=use_amp):
             logits = model(clips)
-            loss = F.cross_entropy(logits, labels)
-        probs = F.softmax(logits.float(), dim=-1)
-        ev = (probs * ranks).sum(dim=-1)
-        pred = logits.argmax(dim=-1)
+            loss = compute_loss(logits, labels, head_kind, _NUM_CLASSES)
+        pred, ev = decode_logits(logits, head_kind)
         preds.extend(pred.cpu().tolist())
         trues.extend(labels.cpu().tolist())
         evs.extend(ev.cpu().tolist())
@@ -125,18 +127,14 @@ def save_checkpoint(
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--backbone", required=True, choices=sorted(BACKBONES))
-    ap.add_argument("--videos-root", default="videos")
+    ap.add_argument("--videos-root", default="videos_processed")
     ap.add_argument("--splits", default="splits.json")
     ap.add_argument("--out-dir", default="runs/exp")
-    ap.add_argument("--epochs", type=int, default=30)
+    ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--batch-size", type=int, default=4)
     ap.add_argument("--grad-accum", type=int, default=1,
                     help="Micro-batches per optimizer step.")
     ap.add_argument("--num-workers", type=int, default=8)
-    ap.add_argument("--prefetch-factor", type=int, default=4,
-                    help="Batches each worker prefetches. Ignored if num_workers=0.")
-    ap.add_argument("--no-persistent-workers", action="store_true",
-                    help="Disable persistent dataloader workers between epochs.")
     ap.add_argument("--clips-train", type=int, default=8)
     ap.add_argument("--clips-eval", type=int, default=24)
     ap.add_argument("--n-segments", type=int, default=24)
@@ -146,8 +144,11 @@ def main() -> None:
     ap.add_argument("--warmup-frac", type=float, default=0.05)
     ap.add_argument("--grad-clip", type=float, default=1.0,
                     help="Max grad norm. <=0 disables.")
-    ap.add_argument("--aggregation", default="max",
+    ap.add_argument("--aggregation", default="mean",
                     choices=["mean", "max", "topk_mean"])
+    ap.add_argument("--head-kind", default="softmax",
+                    choices=["softmax", "ordinal"],
+                    help="'softmax' = 10-way CE; 'ordinal' = CORN cumulative head.")
     ap.add_argument("--no-amp", action="store_true")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--log-interval", type=int, default=10,
@@ -192,26 +193,26 @@ def main() -> None:
         clips_per_video_eval=args.clips_eval,
     )
 
-    loader_kwargs = dict(
-        num_workers=args.num_workers,
-        pin_memory=(device.type == "cuda"),
-        worker_init_fn=worker_init_fn,
-    )
-    if args.num_workers > 0:
-        loader_kwargs["prefetch_factor"] = args.prefetch_factor
-        loader_kwargs["persistent_workers"] = not args.no_persistent_workers
-
     dl_train = DataLoader(
         ds_train, batch_size=args.batch_size, shuffle=True,
-        drop_last=True, **loader_kwargs,
+        num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
+        worker_init_fn=worker_init_fn, drop_last=True,
     )
     dl_val = DataLoader(
-        ds_val, batch_size=1, shuffle=False, **loader_kwargs,
+        ds_val, batch_size=1, shuffle=False,
+        num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
+        worker_init_fn=worker_init_fn,
     )
 
     print(f"Building {args.backbone} (downloads weights on first run)...")
     backbone = build_backbone(args.backbone, pretrained=True)
-    model = DifficultyModel(backbone, aggregation=args.aggregation).to(device)
+    model = DifficultyModel(
+        backbone,
+        aggregation=args.aggregation,
+        head_kind=args.head_kind,
+        num_classes=_NUM_CLASSES,
+    ).to(device)
+    print(f"Head: {args.head_kind}  (num_outputs={model.head[-1].out_features})")
 
     n_total = sum(p.numel() for p in model.parameters())
     n_trainp = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -289,7 +290,7 @@ def main() -> None:
 
             with torch.cuda.amp.autocast(enabled=use_amp):
                 logits = model(clips)
-                loss = F.cross_entropy(logits, labels)
+                loss = compute_loss(logits, labels, args.head_kind, _NUM_CLASSES)
                 loss_scaled = loss / args.grad_accum
 
             if use_amp:
@@ -345,7 +346,7 @@ def main() -> None:
         train_loss_avg = sum(epoch_losses) / max(1, len(epoch_losses))
         print(f"  train: avg_loss={train_loss_avg:.4f}  time={train_dt:.1f}s")
 
-        val_metrics = evaluate(model, dl_val, device, use_amp)
+        val_metrics = evaluate(model, dl_val, device, use_amp, args.head_kind)
         print(
             f"  val:   loss={val_metrics['loss']:.4f}  "
             f"acc={val_metrics['acc']:.4f}  "
