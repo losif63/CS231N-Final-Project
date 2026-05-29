@@ -154,7 +154,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ckpt", required=True)
     ap.add_argument("--split", default="test", choices=["train", "val", "test"])
-    ap.add_argument("--videos-root", default="videos")
+    ap.add_argument("--videos-root", default="videos_processed")
     ap.add_argument("--splits-file", default="splits.json")
     ap.add_argument("--out-dir", default=None,
                     help="Defaults to <ckpt parent>/eval_<split>/.")

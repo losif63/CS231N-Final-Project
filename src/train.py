@@ -134,7 +134,7 @@ def main() -> None:
     ap.add_argument("--batch-size", type=int, default=4)
     ap.add_argument("--grad-accum", type=int, default=1,
                     help="Micro-batches per optimizer step.")
-    ap.add_argument("--num-workers", type=int, default=8)
+    ap.add_argument("--num-workers", type=int, default=4)
     ap.add_argument("--clips-train", type=int, default=8)
     ap.add_argument("--clips-eval", type=int, default=24)
     ap.add_argument("--n-segments", type=int, default=24)
