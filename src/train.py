@@ -149,6 +149,13 @@ def main() -> None:
     ap.add_argument("--head-kind", default="softmax",
                     choices=["softmax", "ordinal"],
                     help="'softmax' = 10-way CE; 'ordinal' = CORN cumulative head.")
+    ap.add_argument("--backbone-train", default="frozen",
+                    choices=["frozen", "lora", "full"],
+                    help="Qwen-VL only. 'frozen'=head-only, "
+                         "'lora'=adapters on attention qkv, 'full'=fine-tune all.")
+    ap.add_argument("--lora-r", type=int, default=8)
+    ap.add_argument("--lora-alpha", type=int, default=16)
+    ap.add_argument("--lora-dropout", type=float, default=0.1)
     ap.add_argument("--no-amp", action="store_true")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--log-interval", type=int, default=10,
@@ -205,7 +212,15 @@ def main() -> None:
     )
 
     print(f"Building {args.backbone} (downloads weights on first run)...")
-    backbone = build_backbone(args.backbone, pretrained=True)
+    backbone_kwargs = {}
+    if args.backbone == "qwen_vl":
+        backbone_kwargs.update(
+            train_mode=args.backbone_train,
+            lora_r=args.lora_r,
+            lora_alpha=args.lora_alpha,
+            lora_dropout=args.lora_dropout,
+        )
+    backbone = build_backbone(args.backbone, pretrained=True, **backbone_kwargs)
     model = DifficultyModel(
         backbone,
         aggregation=args.aggregation,
@@ -221,13 +236,22 @@ def main() -> None:
         f"params: total={n_total/1e6:.2f}M  trainable={n_trainp/1e6:.2f}M"
     )
 
-    optimizer = torch.optim.AdamW(
-        [
-            {"params": model.backbone.parameters(), "lr": args.lr_backbone},
-            {"params": model.head.parameters(),     "lr": args.lr_head},
-        ],
-        weight_decay=args.weight_decay,
-    )
+    backbone_trainable = [p for p in model.backbone.parameters() if p.requires_grad]
+    head_trainable = [p for p in model.head.parameters() if p.requires_grad]
+    param_groups = []
+    backbone_group_idx = None
+    head_group_idx = None
+    if backbone_trainable:
+        param_groups.append({"params": backbone_trainable, "lr": args.lr_backbone})
+        backbone_group_idx = len(param_groups) - 1
+    else:
+        print("  backbone is frozen — head-only fine-tuning.")
+    if head_trainable:
+        param_groups.append({"params": head_trainable, "lr": args.lr_head})
+        head_group_idx = len(param_groups) - 1
+    if not param_groups:
+        raise RuntimeError("No trainable parameters in the model.")
+    optimizer = torch.optim.AdamW(param_groups, weight_decay=args.weight_decay)
 
     micro_per_epoch = len(dl_train)
     steps_per_epoch = math.ceil(micro_per_epoch / args.grad_accum)
@@ -320,26 +344,28 @@ def main() -> None:
 
                 if global_step % args.log_interval == 0:
                     rolling = sum(epoch_losses[-20:]) / min(20, len(epoch_losses))
-                    lr_backbone = optimizer.param_groups[0]["lr"]
-                    lr_head = optimizer.param_groups[1]["lr"]
-                    writer.add_scalar("train/loss", rolling, global_step)
-                    writer.add_scalar("train/lr_backbone", lr_backbone, global_step)
-                    writer.add_scalar("train/lr_head", lr_head, global_step)
-                    if wandb is not None:
-                        wandb.log(
-                            {
-                                "train/loss": rolling,
-                                "train/lr_backbone": lr_backbone,
-                                "train/lr_head": lr_head,
-                            },
-                            step=global_step,
+                    scalars = {"train/loss": rolling}
+                    if backbone_group_idx is not None:
+                        scalars["train/lr_backbone"] = (
+                            optimizer.param_groups[backbone_group_idx]["lr"]
                         )
+                    if head_group_idx is not None:
+                        scalars["train/lr_head"] = (
+                            optimizer.param_groups[head_group_idx]["lr"]
+                        )
+                    for k, v in scalars.items():
+                        writer.add_scalar(k, v, global_step)
+                    if wandb is not None:
+                        wandb.log(scalars, step=global_step)
 
             rolling = sum(epoch_losses[-20:]) / min(20, len(epoch_losses))
+            # Show the most informative LR in the progress bar (backbone if
+            # trainable, else head).
+            lr_display_idx = backbone_group_idx if backbone_group_idx is not None else head_group_idx
             pbar.set_postfix(
                 loss=f"{loss.item():.3f}",
                 roll20=f"{rolling:.3f}",
-                lr=f"{optimizer.param_groups[0]['lr']:.2e}",
+                lr=f"{optimizer.param_groups[lr_display_idx]['lr']:.2e}",
             )
 
         train_dt = time.time() - t0

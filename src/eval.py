@@ -223,7 +223,23 @@ def main() -> None:
     )
 
     print(f"Building {backbone_name}...")
-    backbone = build_backbone(backbone_name, pretrained=False)
+    backbone_kwargs = {}
+    if backbone_name == "qwen_vl":
+        # Must match the topology saved in the checkpoint, or load_state_dict
+        # fails. train_mode controls whether LoRA adapters exist; the LoRA
+        # hyperparams control adapter shape.
+        backbone_kwargs.update(
+            train_mode=saved_args.get("backbone_train", "frozen"),
+            lora_r=saved_args.get("lora_r", 8),
+            lora_alpha=saved_args.get("lora_alpha", 16),
+            lora_dropout=saved_args.get("lora_dropout", 0.1),
+        )
+        print(
+            f"  qwen kwargs: train_mode={backbone_kwargs['train_mode']}  "
+            f"lora_r={backbone_kwargs['lora_r']}  "
+            f"lora_alpha={backbone_kwargs['lora_alpha']}"
+        )
+    backbone = build_backbone(backbone_name, pretrained=False, **backbone_kwargs)
     model = DifficultyModel(
         backbone,
         aggregation=aggregation,
