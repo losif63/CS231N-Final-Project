@@ -57,41 +57,76 @@ def main() -> None:
                     help="Delete broken files after listing (prompts for confirmation).")
     args = ap.parse_args()
 
-    records = scan_video_dir(args.videos_root)
-    print(f"Scanning {len(records)} videos with {args.workers} worker(s)...")
-
-    broken: List[Tuple[str, str, int]] = []  # (path, reason, label)
-    path_to_label = {r.path: r.label for r in records}
-
-    if args.workers <= 1:
-        it = tqdm(records, desc="scan")
-        for r in it:
-            _, ok, reason = _probe(r.path)
-            if not ok:
-                broken.append((r.path, reason, r.label))
-    else:
-        with ProcessPoolExecutor(max_workers=args.workers) as pool:
-            futures = {pool.submit(_probe, r.path): r.path for r in records}
-            for fut in tqdm(as_completed(futures), total=len(futures), desc="scan"):
-                path, ok, reason = fut.result()
-                if not ok:
-                    broken.append((path, reason, path_to_label[path]))
-
     out = Path(args.out)
-    out.write_text("\n".join(p for p, _, _ in broken) + ("\n" if broken else ""))
-    print(f"\nBroken: {len(broken)} / {len(records)}  →  {out}")
+    broken: List[Tuple[str, str, int]] = []  # (path, reason, label)
+
+    # Check if broken_videos.txt already exists
+    if out.exists():
+        ans = input(f"{out} already exists. Use it? [y/N] ").strip().lower()
+        if ans == "y":
+            # Load broken videos from file
+            broken_paths = out.read_text().strip().split("\n")
+            broken_paths = [p for p in broken_paths if p]  # Filter empty lines
+            broken = [(p, "", 0) for p in broken_paths]  # (path, reason, label)
+            print(f"Loaded {len(broken)} broken videos from {out}")
+        else:
+            # Proceed with scan
+            records = scan_video_dir(args.videos_root)
+            print(f"Scanning {len(records)} videos with {args.workers} worker(s)...")
+            path_to_label = {r.path: r.label for r in records}
+
+            if args.workers <= 1:
+                it = tqdm(records, desc="scan")
+                for r in it:
+                    _, ok, reason = _probe(r.path)
+                    if not ok:
+                        broken.append((r.path, reason, r.label))
+            else:
+                with ProcessPoolExecutor(max_workers=args.workers) as pool:
+                    futures = {pool.submit(_probe, r.path): r.path for r in records}
+                    for fut in tqdm(as_completed(futures), total=len(futures), desc="scan"):
+                        path, ok, reason = fut.result()
+                        if not ok:
+                            broken.append((path, reason, path_to_label[path]))
+
+            out.write_text("\n".join(p for p, _, _ in broken) + ("\n" if broken else ""))
+            print(f"\nBroken: {len(broken)} / {len(records)}  →  {out}")
+    else:
+        # File doesn't exist, proceed with scan
+        records = scan_video_dir(args.videos_root)
+        print(f"Scanning {len(records)} videos with {args.workers} worker(s)...")
+        path_to_label = {r.path: r.label for r in records}
+
+        if args.workers <= 1:
+            it = tqdm(records, desc="scan")
+            for r in it:
+                _, ok, reason = _probe(r.path)
+                if not ok:
+                    broken.append((r.path, reason, r.label))
+        else:
+            with ProcessPoolExecutor(max_workers=args.workers) as pool:
+                futures = {pool.submit(_probe, r.path): r.path for r in records}
+                for fut in tqdm(as_completed(futures), total=len(futures), desc="scan"):
+                    path, ok, reason = fut.result()
+                    if not ok:
+                        broken.append((path, reason, path_to_label[path]))
+
+        out.write_text("\n".join(p for p, _, _ in broken) + ("\n" if broken else ""))
+        print(f"\nBroken: {len(broken)} / {len(records)}  →  {out}")
 
     if broken:
-        per_class: Counter = Counter(label for _, _, label in broken)
-        print("\nBy class (stars):")
-        for lbl in range(10):
-            n = per_class.get(lbl, 0)
-            if n:
-                print(f"  {lbl + 1}★ : {n}")
+        # Only show detailed summary if we have label/reason info (from fresh scan)
+        if broken[0][1] or broken[0][2]:
+            per_class: Counter = Counter(label for _, _, label in broken)
+            print("\nBy class (stars):")
+            for lbl in range(10):
+                n = per_class.get(lbl, 0)
+                if n:
+                    print(f"  {lbl + 1}★ : {n}")
 
-        print("\nFirst 10 broken files (path → reason):")
-        for path, reason, _ in broken[:10]:
-            print(f"  {path}\n    -> {reason}")
+            print("\nFirst 10 broken files (path → reason):")
+            for path, reason, _ in broken[:10]:
+                print(f"  {path}\n    -> {reason}")
 
         if args.delete:
             ans = input(f"\nDelete all {len(broken)} broken files? [y/N] ").strip().lower()
