@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data (large files)
+videos/
+levels/
+yolo_player_height/dataset_*
+yolo_player_height/runs/
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+
+# Logs
+*.log
+
+# Models
+*.pt
+
+# Other
+gameplay_attribute_extractor/
+start_end_preprocessing/
