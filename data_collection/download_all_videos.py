@@ -6,6 +6,8 @@ result returned by the YouTube search query (so num_results > 1 produces _1, _2,
 Run from the repo root:
     python data_collection/download_all_videos.py
     python data_collection/download_all_videos.py --num-results 3
+    python data_collection/download_all_videos.py --stars 7 8 9
+    python data_collection/download_all_videos.py --level-id 12345678 --num-results 1
 """
 
 import argparse
@@ -87,9 +89,15 @@ def download_for_level(
         ydl.download([f"ytsearch{num_results}:{query}"])
 
 
-def iter_metadata(levels_dir: Path):
+def iter_metadata(
+    levels_dir: Path,
+    stars_filter: set[str] | None = None,
+    level_id_filter: int | None = None,
+):
     for stars_dir in sorted(levels_dir.iterdir()):
         if not stars_dir.is_dir():
+            continue
+        if stars_filter is not None and stars_dir.name not in stars_filter:
             continue
         metadata_dir = stars_dir / "metadata"
         if not metadata_dir.is_dir():
@@ -97,6 +105,8 @@ def iter_metadata(levels_dir: Path):
         for json_path in sorted(metadata_dir.glob("*.json")):
             with json_path.open() as f:
                 metadata = json.load(f)
+            if level_id_filter is not None and metadata.get("id") != level_id_filter:
+                continue
             yield stars_dir.name, metadata
 
 
@@ -106,9 +116,20 @@ def main() -> None:
     )
     parser.add_argument("--levels-dir", type=Path, default=DEFAULT_LEVELS_DIR)
     parser.add_argument("--videos-dir", type=Path, default=DEFAULT_VIDEOS_DIR)
-    parser.add_argument("--num-results", type=int, default=5)
+    parser.add_argument("--num-results", type=int, default=2)
     parser.add_argument("--download-delay", type=int, default=2)
     parser.add_argument("--cookies-file", type=Path, default=DEFAULT_COOKIES_FILE)
+    parser.add_argument(
+        "--stars",
+        type=int,
+        nargs="+",
+        help="Only process levels in these star buckets (e.g. --stars 7 8 9).",
+    )
+    parser.add_argument(
+        "--level-id",
+        type=int,
+        help="Download only the level with this id (still scoped by --stars if given).",
+    )
     parser.add_argument(
         "--break-every",
         type=int,
@@ -150,8 +171,12 @@ def main() -> None:
     if cookies_file is None:
         print(f"[warn] cookies file not found at {args.cookies_file}; proceeding without cookies", file=sys.stderr)
 
+    stars_filter = {f"{n}stars" for n in args.stars} if args.stars else None
+
     downloads_since_break = 0
-    for stars_bucket, metadata in iter_metadata(args.levels_dir):
+    found_any = False
+    for stars_bucket, metadata in iter_metadata(args.levels_dir, stars_filter, args.level_id):
+        found_any = True
         level_id = metadata.get("id", "?")
         target_dir = args.videos_dir / stars_bucket
         before = existing_indexes(target_dir, level_id, args.num_results) if target_dir.is_dir() else set()
@@ -182,6 +207,14 @@ def main() -> None:
                 nap = random.randint(args.per_video_min_seconds, args.per_video_max_seconds)
                 print(f"[wait] sleeping {nap}s before next download")
                 time.sleep(nap)
+
+    if not found_any:
+        filters = []
+        if stars_filter is not None:
+            filters.append(f"stars={sorted(stars_filter)}")
+        if args.level_id is not None:
+            filters.append(f"level-id={args.level_id}")
+        print(f"[warn] no levels matched filters ({', '.join(filters) or 'none'})", file=sys.stderr)
 
 
 if __name__ == "__main__":

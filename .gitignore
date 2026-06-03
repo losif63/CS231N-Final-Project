@@ -16,8 +16,9 @@ build/
 *.swo
 
 # Data (large files)
-videos/
-levels/
+videos/**
+levels/**
+videos_processed/**
 yolo_player_height/dataset_*
 yolo_player_height/runs/
 
@@ -31,7 +32,13 @@ yolo_player_height/runs/
 
 # Models
 *.pt
+runs/
+checkpoints/
 
 # Other
 gameplay_attribute_extractor/
 start_end_preprocessing/
+verify_out/
+node_modules/**
+package.json
+package-lock.json
