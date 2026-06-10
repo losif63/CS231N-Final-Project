@@ -19,6 +19,8 @@ Each clip uses 8 consecutive frames from the video:
   - Center frame is the original sample's frame (labeled frame)
   - Frame indices: [center-4, center-3, center-2, center-1, center, center+1, center+2, center+3]
   - Label is preserved from the center frame
+
+Written using Claude Code
 """
 
 import json

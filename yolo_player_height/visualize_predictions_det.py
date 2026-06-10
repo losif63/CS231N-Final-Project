@@ -16,6 +16,8 @@ Usage:
 
     # Or with defaults:
     python visualize_predictions_det.py
+
+Written using Claude Code
 """
 
 import argparse

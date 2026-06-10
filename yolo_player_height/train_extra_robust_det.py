@@ -20,6 +20,8 @@ Usage:
   python train_robust_occlusions_mlp_detection_bb.py \
     --dataset-dir dataset_10000_0 \
     --labels-file dataset_10000_0/labels_4567.json
+
+Written using Claude Code
 """
 
 import torch

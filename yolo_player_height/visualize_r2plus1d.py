@@ -8,6 +8,8 @@ Reads a video, extracts 5-frame clips, and visualizes:
 - Game mode (greyscale overlay for right/mirror side)
 
 Output video shows predictions on center frame of each clip.
+
+Written using Claude Code
 """
 
 import torch

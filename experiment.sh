@@ -1,4 +1,5 @@
 #!/bin/bash
+# Written using Claude Code
 
 python src/train.py --backbone slowfast --wandb-project gd-difficulty --wandb-run-name slowfast-v1 --out-dir runs/slowfast
 python src/train.py --backbone x3d --wandb-project gd-difficulty --wandb-run-name x3d-v1 --out-dir runs/x3d

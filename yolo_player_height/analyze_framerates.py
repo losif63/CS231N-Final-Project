@@ -2,6 +2,8 @@
 """
 Analyze the distribution of framerates across video files.
 Samples videos if there are too many to process quickly.
+
+Written using Claude Code
 """
 
 import cv2

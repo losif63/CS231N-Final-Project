@@ -5,6 +5,8 @@ Three-component loss:
 1. Smooth L1 loss for spatial accuracy (β=0.05)
 2. L1 loss on velocity deltas for kinematic regularization (λ=0.2)
 3. Per-frame occlusion weighting (1 - occlusion_i)
+
+Written using Claude Code
 """
 
 import torch

@@ -12,6 +12,8 @@ Usage:
         --batch-size 32 \
         --learning-rate 1e-3 \
         --save-dir checkpoints/pretrain
+
+Written using Claude Code
 """
 
 import argparse

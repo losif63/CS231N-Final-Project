@@ -1,3 +1,5 @@
+// From previous class's project
+
 import GD from 'gd.js';
 import fs from 'fs';
 import path from 'path';

@@ -10,6 +10,8 @@ tensor — we construct both pathways from one (B, C, T, H, W) clip:
 
 Normalization stats and head-strip are the same pattern as the other
 PyTorchVideo backbones (X3D, I3D).
+
+Written using Claude Code
 """
 
 from __future__ import annotations

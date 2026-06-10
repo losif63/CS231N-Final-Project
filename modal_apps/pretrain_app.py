@@ -6,6 +6,8 @@ Supports both A100 and H100 GPUs.
 Usage:
     modal run modal_apps/pretrain_app.py --epochs 50 --batch-size 32 --gpu h100
     modal run modal_apps/pretrain_app.py --epochs 50 --batch-size 32 --gpu a100
+
+Written using Claude Code
 """
 
 import subprocess

@@ -2,6 +2,8 @@
 
 These are intentionally batched: input is always `(B, C, T, H, W)`. Each
 helper is a no-op fast-path when the shape already matches the target.
+
+Written using Claude Code
 """
 
 from __future__ import annotations

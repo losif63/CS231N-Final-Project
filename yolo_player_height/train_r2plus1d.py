@@ -23,6 +23,8 @@ Usage:
     --dataset-dir r2plus1d_dataset_10000_0 \
     --labels-file r2plus1d_dataset_10000_0/labels_4567.json \
     --epochs 50 --batch-size 16
+
+Written using Claude Code
 """
 
 import torch

@@ -12,6 +12,7 @@
 #
 # Defaults are tighter than the CNN sweeps because Qwen-VL is much heavier per
 # clip: batch=1, clips-train=4, clips-eval=8, AMP off (base is already bf16).
+# Written using Claude Code
 
 set -e
 

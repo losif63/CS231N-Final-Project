@@ -4,6 +4,8 @@ Input: `(B, C=3, T, H, W)` raw clip in [0, 1] from the dataset. Internally
 subsamples to 16 frames, resizes to 112x112 (R(2+1)D's native input), normalizes
 with the KINETICS400_V1 weights' stats, then runs the net with the classifier
 `fc` stripped. Returns `(B, feature_dim)` per clip (feature_dim = 512).
+
+Written using Claude Code
 """
 
 from __future__ import annotations

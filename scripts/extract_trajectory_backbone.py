@@ -10,6 +10,8 @@ Usage:
     python scripts/extract_trajectory_backbone.py \
         --trajectory-checkpoint path/to/best_model.pt \
         --output pretrained_slowfast_backbone.pt
+
+Written using Claude Code
 """
 
 import argparse

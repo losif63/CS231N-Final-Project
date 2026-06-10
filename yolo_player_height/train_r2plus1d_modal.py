@@ -9,6 +9,8 @@ This will:
   2. Uncompress it
   3. Train the model on A100 GPU
   4. Download results
+
+Written using Claude Code
 """
 
 import modal

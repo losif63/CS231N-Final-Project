@@ -12,6 +12,8 @@ segment:
 
 Returns `(clips, label)` where clips has shape `(K, T, C, H, W)` and label is
 0-indexed (0..9) corresponding to 1..10 stars. K is constant within a split.
+
+Written using Claude Code
 """
 
 from __future__ import annotations

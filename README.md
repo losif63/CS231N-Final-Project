@@ -291,3 +291,5 @@ Phase 4+ deliverables, in order:
 
 Videos and level metadata are scraped from third-party sources for academic
 use within this CS231N project. They are gitignored.
+
+(Partially written using Claude Code)

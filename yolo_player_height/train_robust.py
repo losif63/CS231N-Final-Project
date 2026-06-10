@@ -17,6 +17,8 @@ Usage:
   python train_robust.py \
     --dataset-dir dataset_10000_0 \
     --labels-file dataset_10000_0/labels_2026-06-02_19-02-42.json
+
+Written using Claude Code
 """
 
 import torch
