@@ -27,6 +27,8 @@ Usage:
     --dataset-dir dataset_10000_0 \
     --labels-file dataset_10000_0/labels_4567.json \
     --epochs 20 --batch-size 16
+
+Written using Claude Code
 """
 
 import torch

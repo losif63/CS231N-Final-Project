@@ -2,6 +2,8 @@
 MLP prediction head for trajectory prediction.
 
 Simple feed-forward network: D → 512 → ReLU → Dropout(0.2) → 32
+
+Written using Claude Code
 """
 
 import torch

@@ -19,6 +19,8 @@ Two head kinds are supported:
 Use `compute_loss(logits, labels, head_kind, num_classes)` for training and
 `decode_logits(logits, head_kind)` to recover `(pred_class_0idx, ev_in_stars)`
 for metrics; both keep the metric math identical across head kinds.
+
+Written using Claude Code
 """
 
 from __future__ import annotations

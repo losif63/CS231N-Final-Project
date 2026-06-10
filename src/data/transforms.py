@@ -4,6 +4,8 @@ The dataset emits "raw" clips: aspect-preserving resize to a canonical
 (H=short_side, W=canon_width) per the spec, float in [0,1]. Per-backbone
 subsampling / native-resolution resize / mean-std normalization is owned by
 each backbone wrapper, not here.
+
+Written using Claude Code
 """
 
 from __future__ import annotations

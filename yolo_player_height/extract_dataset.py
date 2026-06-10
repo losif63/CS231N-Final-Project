@@ -7,6 +7,8 @@ Each sample is a 660x660 numpy array:
 - Channel 3: Greyscale difference to previous frame (~30 FPS)
 
 Crops exclude first/last 20s of each video.
+
+Written using Claude Code
 """
 
 import cv2

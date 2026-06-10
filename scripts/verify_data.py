@@ -14,6 +14,8 @@ What it does
 
 Run (per your conda env note):
     conda run -n cs231n python scripts/verify_data.py
+
+Written using Claude Code
 """
 
 from __future__ import annotations

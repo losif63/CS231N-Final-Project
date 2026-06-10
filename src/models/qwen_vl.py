@@ -31,6 +31,8 @@ Three training modes:
 Requires a different conda env (`cs231n-vit`) than the CNN backbones, since
 transformers >= 4.57 needs torch >= 2.2, but pytorchvideo (the CNN-backbone
 loader) is pinned to torch 2.1.x.
+
+Written using Claude Code
 """
 
 from __future__ import annotations

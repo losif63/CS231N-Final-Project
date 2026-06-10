@@ -9,6 +9,8 @@
 #   metadata; pip will warn but the runtime works against torch 2.1.x.
 # - numpy must stay <2.0 because fvcore (a PyTorchVideo dep) imports
 #   numpy.float / numpy.int aliases removed in 2.0.
+#
+# Written using Claude Code
 
 torch==2.1.2
 torchvision==0.16.2

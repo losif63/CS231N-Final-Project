@@ -3,6 +3,8 @@ Trajectory pretraining dataset loader.
 
 Loads HDF5 file with 48-frame video clips and 64 label values per clip.
 At training time, randomly samples offsets to create (16-frame input, 32-frame output) pairs.
+
+Written using Claude Code
 """
 
 from __future__ import annotations

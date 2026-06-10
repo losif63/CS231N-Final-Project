@@ -4,6 +4,8 @@ Input: `(B, C=3, T, H, W)` raw clip in [0, 1] from the dataset (T defaults to
 32, H=224, W=398). Internally subsamples to 16 frames, resizes spatially to
 224x224, normalizes with X3D's Kinetics-400 stats, then runs the spatiotemporal
 CNN with the classifier head stripped. Returns `(B, feature_dim)` per clip.
+
+Written using Claude Code
 """
 
 from __future__ import annotations

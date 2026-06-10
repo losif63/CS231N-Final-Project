@@ -4,6 +4,8 @@ Input: `(B, C=3, T, H, W)` raw clip in [0, 1] from the dataset. Uses the raw
 32-frame clip directly (NATIVE_T = 32), resizes spatially to 224x224,
 normalizes with I3D's Kinetics-400 stats, then runs the net with the
 classifier head stripped. Returns `(B, feature_dim)` per clip.
+
+Written using Claude Code
 """
 
 from __future__ import annotations

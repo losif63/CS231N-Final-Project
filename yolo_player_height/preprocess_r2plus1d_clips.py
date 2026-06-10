@@ -7,6 +7,8 @@ For each labeled sample:
   2. Load 5 consecutive frames from the video
   3. Rescale labels from original frame coordinates to 320×320
   4. Save as (5, 320, 320, 3) uint8 RGB npy file
+
+Written using Claude Code
 """
 
 import json

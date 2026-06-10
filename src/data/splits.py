@@ -1,4 +1,8 @@
-"""Stratified train/val/test split, persisted to JSON for reproducibility."""
+"""
+Stratified train/val/test split, persisted to JSON for reproducibility.
+
+Written using Claude Code
+"""
 
 from __future__ import annotations
 

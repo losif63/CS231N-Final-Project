@@ -6,6 +6,8 @@ Architecture:
 - SlowFast backbone: processes fast and slow pathways
 - Aggregation: flattens backbone output to (B, D) vector
 - Trajectory head: MLP predicting 32 future heights
+
+Written using Claude Code
 """
 
 import torch

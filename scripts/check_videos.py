@@ -12,6 +12,8 @@ Run:
 Outputs:
 - broken_videos.txt : one path per line, broken files only.
 - A per-class summary table on stdout.
+
+Written using Claude Code
 """
 
 from __future__ import annotations

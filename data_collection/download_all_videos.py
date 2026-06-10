@@ -8,6 +8,8 @@ Run from the repo root:
     python data_collection/download_all_videos.py --num-results 3
     python data_collection/download_all_videos.py --stars 7 8 9
     python data_collection/download_all_videos.py --level-id 12345678 --num-results 1
+
+Written using Claude Code
 """
 
 import argparse

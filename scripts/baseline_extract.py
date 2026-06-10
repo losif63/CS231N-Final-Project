@@ -5,6 +5,8 @@ ResNet-18 is frozen and runs in no_grad mode on MPS.
 
 Processing order is interleaved across classes to ensure balanced resumption.
 Uses a prefetch thread to overlap I/O with GPU computation.
+
+Written using Claude Code
 """
 
 import argparse

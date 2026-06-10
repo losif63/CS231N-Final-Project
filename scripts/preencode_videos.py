@@ -31,6 +31,8 @@ then point training at the new dir:
 
 Example with more parallelism on a beefy box:
     python scripts/preencode_videos.py --workers 12 --threads-per-job 2
+
+Written using Claude Code
 """
 
 from __future__ import annotations

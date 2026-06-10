@@ -9,6 +9,7 @@
 # confusion_matrix.npy} per (ckpt, split) combination — so 4 result folders
 # total. The eval script reads backbone/head_kind/train_mode/LoRA hyperparams
 # from each checkpoint's saved args, so no need to pass them on the CLI.
+# Written using Claude Code
 
 set -e
 

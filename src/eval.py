@@ -11,6 +11,9 @@ confusion-matrix PNG and a metrics.json, and prints baselines:
 Example:
     python src/eval.py --ckpt runs/x3d/best.pt --split test
     python src/eval.py --ckpt runs/x3d/best.pt --split val --out-dir eval_out/x3d
+
+    
+Written using Claude Code
 """
 
 from __future__ import annotations

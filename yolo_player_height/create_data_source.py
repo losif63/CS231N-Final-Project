@@ -2,6 +2,8 @@
 """
 Create a data_source.json file with video metadata for training.
 Filters for videos with ~30 FPS or ~60 FPS and samples 1000 of them.
+
+Written using Claude Code
 """
 
 import cv2

@@ -5,6 +5,8 @@ Usage:
   modal run modal_apps/train_difficulty_with_pretrained_backbone.py \
     --gpu h100 --epochs 10 --batch-size 4 \
     --wandb-project gd-difficulty --wandb-run-name slowfast-pretrained-v1
+
+Written using Claude Code
 """
 
 import modal

@@ -10,6 +10,8 @@ Controls:
   Q: Quit and save labels
 
 Labels are saved to labels.json in the dataset folder.
+
+Written using Claude Code
 """
 
 import cv2

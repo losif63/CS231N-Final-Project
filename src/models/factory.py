@@ -12,6 +12,8 @@ env (no pytorchvideo) and a non-lazy `from .qwen_vl import QwenVLBackbone`
 would crash the CNN env (no transformers). Deferring the import until
 `build_backbone(name)` is called means each env only tries to import the
 backbones it can actually run.
+
+Written using Claude Code
 """
 
 from __future__ import annotations

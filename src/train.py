@@ -15,6 +15,8 @@ Checkpoints written to <out-dir>:
 
 TensorBoard logs under <out-dir>/tb/. Per-step train loss + LRs; per-epoch val
 loss / acc / MAE / off-by-one.
+
+Written using Claude Code
 """
 
 from __future__ import annotations

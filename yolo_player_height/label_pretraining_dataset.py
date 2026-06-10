@@ -6,6 +6,8 @@ height/occlusion/mode predictions using the trained r2plus1d model.
 For each video, labels 8 non-overlapping 64-frame clips (skipping first 10s and last 30s).
 Handles resumption by checking existing JSON files.
 Uses batching for speed.
+
+Written using Claude Code
 """
 
 import torch

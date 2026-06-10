@@ -2,6 +2,8 @@
 
 Loads pre-extracted features from processed_resnet18/*.npy files.
 Trains an attention-pooling + MLP head for difficulty classification (1-10 stars).
+
+Written using Claude Code
 """
 
 import argparse
