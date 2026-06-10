@@ -168,6 +168,9 @@ def main() -> None:
                     help="W&B entity (user or team). Defaults to wandb's own default.")
     ap.add_argument("--wandb-run-name", default=None,
                     help="Optional W&B run name (defaults to wandb-generated).")
+    ap.add_argument("--pretrained-backbone-checkpoint", default=None,
+                    help="Optional path to pretrained backbone weights. "
+                         "If provided, overrides internet-weight pretraining.")
     args = ap.parse_args()
 
     random.seed(args.seed)
@@ -220,7 +223,12 @@ def main() -> None:
             lora_alpha=args.lora_alpha,
             lora_dropout=args.lora_dropout,
         )
-    backbone = build_backbone(args.backbone, pretrained=True, **backbone_kwargs)
+    backbone = build_backbone(
+        args.backbone,
+        pretrained=True,
+        checkpoint_path=args.pretrained_backbone_checkpoint,
+        **backbone_kwargs
+    )
     model = DifficultyModel(
         backbone,
         aggregation=args.aggregation,

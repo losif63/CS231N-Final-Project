@@ -1,11 +1,52 @@
-levels/**
-node_modules/**
-videos/**
-videos_processed/**
-package.json
-package-lock.json
-verify_out/
+# Python
 __pycache__/
 *.pyc
-checkpoints/
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data (large files)
+videos/**
+levels/**
+videos_processed/**
+yolo_player_height/dataset_*
+yolo_player_height/runs/
+yolo_player_height/4D_dataset_10000_0/
+yolo_player_height/r2plus1d_dataset_10000_0/
+# yolo_player_height/pretraining_processed_labels
+yolo_player_height/pretraining_processed_labels
+yolo_player_height/*.mp4
+yolo_player_height/*.hdf5
+processed_resnet18/
+videos_processed/
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+
+# Logs
+*.log
+
+# Models
+*.pt
 runs/
+checkpoints/
+
+# Other
+gameplay_attribute_extractor/
+start_end_preprocessing/
+verify_out/
+node_modules/**
+package.json
+package-lock.json
