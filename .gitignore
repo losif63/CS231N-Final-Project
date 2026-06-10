@@ -21,6 +21,14 @@ levels/**
 videos_processed/**
 yolo_player_height/dataset_*
 yolo_player_height/runs/
+yolo_player_height/4D_dataset_10000_0/
+yolo_player_height/r2plus1d_dataset_10000_0/
+# yolo_player_height/pretraining_processed_labels
+yolo_player_height/pretraining_processed_labels
+yolo_player_height/*.mp4
+yolo_player_height/*.hdf5
+processed_resnet18/
+videos_processed/
 
 # Archives
 *.zip

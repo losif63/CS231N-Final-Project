@@ -60,7 +60,7 @@ DIFF_STD = 0.15
 
 
 class GDPlayerModel(nn.Module):
-    """YOLOv8n-cls backbone adapted for 4-channel input and regression output."""
+    """YOLOv8n-cls backbone adapted for 4-channel input and MLP head."""
 
     def __init__(self, model_path: Path):
         super().__init__()
@@ -69,7 +69,54 @@ class GDPlayerModel(nn.Module):
         checkpoint = torch.load(model_path, map_location="cpu")
         yolo = YOLO("yolov8n-cls.pt")
         self.backbone = yolo.model
-        self.backbone.load_state_dict(checkpoint["model_state_dict"])
+
+        # ── Extend first conv: 3 → 4 input channels ───────────────────
+        first_conv = self.backbone.model[0].conv
+        out_c = first_conv.out_channels
+        new_conv = nn.Conv2d(
+            4, out_c,
+            first_conv.kernel_size,
+            first_conv.stride,
+            first_conv.padding,
+            bias=first_conv.bias is not None,
+        )
+        with torch.no_grad():
+            new_conv.weight[:, :3] = first_conv.weight.data
+            new_conv.weight[:, 3] = first_conv.weight.data.mean(dim=1)
+            if first_conv.bias is not None:
+                new_conv.bias.data.copy_(first_conv.bias.data)
+        self.backbone.model[0].conv = new_conv
+
+        # ── Patch classification head for MLP regression ───────────────────
+        classify_layer = self.backbone.model[-1]
+        in_features = classify_layer.linear.in_features  # 1280
+        hidden_features = 128
+
+        # Build MLP: 1280 → 128 → 2
+        mlp = nn.Sequential(
+            nn.Linear(in_features, hidden_features),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_features, 2),
+        )
+        classify_layer.linear = mlp
+
+        # Override forward to use MLP
+        def _forward(self, x):
+            if isinstance(x, list):
+                x = torch.cat(x, 1)
+            return self.linear(self.drop(self.pool(self.conv(x)).flatten(1)))
+
+        import types
+        classify_layer.forward = types.MethodType(_forward, classify_layer)
+
+        # Load state dict, handling both direct and wrapped checkpoints
+        state_dict = checkpoint["model_state_dict"]
+
+        # If checkpoint has "backbone." prefix, strip it
+        if all(k.startswith("backbone.") for k in state_dict.keys()):
+            state_dict = {k.replace("backbone.", ""): v for k, v in state_dict.items()}
+
+        self.backbone.load_state_dict(state_dict)
 
     def forward(self, x):
         return self.backbone(x)
@@ -248,7 +295,7 @@ def main() -> None:
                     help="Source videos directory (original, full-resolution).")
     ap.add_argument("--label-dir", default="videos_processed",
                     help="Directory where label JSONs will be written.")
-    ap.add_argument("--model-checkpoint", required=True,
+    ap.add_argument("--model-checkpoint", default="yolo_player_height/yolo_mlp_label_model.pt",
                     help="Path to trained model checkpoint (.pt file).")
     ap.add_argument("--fps", type=int, default=30,
                     help="Frame rate to extract at.")
